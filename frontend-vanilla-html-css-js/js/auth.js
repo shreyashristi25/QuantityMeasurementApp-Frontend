@@ -1,180 +1,159 @@
-
-/**
- * auth.js
- * Handles login, signup, tab switching, password toggle, and validation.
- */
-
-const USERS_KEY = 'qm_users';
-const SESSION_KEY = 'qm_session';
-
-// ── Storage helpers ──────────────────────────────────────────────
-function getUsers() {
-  return JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-}
-
-function saveUsers(users) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
-function setSession(user) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-}
-
-function getSession() {
-  return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-}
-
-// ── Tab switching with smooth animation ─────────────────────────
-function switchTab(tab) {
-  const loginForm  = document.getElementById('loginForm');
+// Function to switch between login and signup tabs
+function switchTab(tabId) {
+  const loginForm = document.getElementById('loginForm');
   const signupForm = document.getElementById('signupForm');
-  const loginTab   = document.getElementById('loginTab');
-  const signupTab  = document.getElementById('signupTab');
+  const tabLogin = document.getElementById('tabLogin');
+  const tabSignup = document.getElementById('tabSignup');
 
-  const showForm = tab === 'login' ? loginForm  : signupForm;
-  const hideForm = tab === 'login' ? signupForm : loginForm;
-  const activeTab   = tab === 'login' ? loginTab  : signupTab;
-  const inactiveTab = tab === 'login' ? signupTab : loginTab;
+  if (tabId === 'login') {
+    loginForm.classList.remove('hidden');
+    signupForm.classList.add('hidden');
+    
+    tabLogin.classList.add('active');
+    tabSignup.classList.remove('active');
+  } else {
+    signupForm.classList.remove('hidden');
+    loginForm.classList.add('hidden');
+    
+    tabSignup.classList.add('active');
+    tabLogin.classList.remove('active');
+  }
+}
 
-  // Fade out current
-  hideForm.style.opacity = '0';
-  hideForm.style.transform = 'translateX(-16px)';
+// Function to toggle password visibility
+function togglePassword(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.innerHTML = `
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+        <line x1="1" y1="1" x2="23" y2="23"></line>
+      </svg>
+    `; // Eye-off icon
+  } else {
+    input.type = 'password';
+    btn.innerHTML = `
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
+    `; // Eye icon
+  }
+}
 
-  setTimeout(() => {
-    hideForm.classList.remove('active-form');
-    hideForm.classList.add('hidden-form');
-    hideForm.style.display = 'none';
+// Validation Logic
+function showError(inputId, message) {
+  const group = document.getElementById('group-' + inputId);
+  const errorText = document.getElementById('error-' + inputId);
+  if(group && errorText) {
+    group.classList.add('error');
+    errorText.textContent = message;
+  }
+}
 
-    // Reset and show new form
-    showForm.style.display = 'flex';
-    showForm.style.opacity = '0';
-    showForm.style.transform = 'translateX(16px)';
+function clearError(inputId) {
+  const group = document.getElementById('group-' + inputId);
+  const errorText = document.getElementById('error-' + inputId);
+  if(group && errorText) {
+    group.classList.remove('error');
+    errorText.textContent = '';
+  }
+}
 
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        showForm.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
-        showForm.style.opacity = '1';
-        showForm.style.transform = 'translateX(0)';
-        showForm.classList.remove('hidden-form');
-        showForm.classList.add('active-form');
+function validateEmail(email) {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(String(email).toLowerCase());
+}
+
+// Ensure the correct tab is active initially and setup form validations
+document.addEventListener('DOMContentLoaded', () => {
+    // Initial tab load
+    const authTab = localStorage.getItem('authTab');
+    if (authTab === 'login') {
+        switchTab('login');
+    } else {
+        switchTab('signup');
+    }
+    localStorage.removeItem('authTab');
+
+    // Form Validators
+    const signupForm = document.getElementById('signupForm');
+    const loginForm = document.getElementById('loginForm');
+
+    // Clear error on input
+    const inputs = document.querySelectorAll('input');
+    inputs.forEach(input => {
+      input.addEventListener('input', () => {
+        clearError(input.id);
       });
     });
-  }, 150);
 
-  activeTab.classList.add('active');
-  inactiveTab.classList.remove('active');
+    if (signupForm) {
+      signupForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        let isValid = true;
+        
+        ['signupName', 'signupEmail', 'signupPassword', 'signupMobile'].forEach(clearError);
 
-  // Clear errors on switch
-  hideError('loginError');
-  hideError('signupError');
-}
+        const name = document.getElementById('signupName').value.trim();
+        const email = document.getElementById('signupEmail').value.trim();
+        const password = document.getElementById('signupPassword').value;
+        const mobile = document.getElementById('signupMobile').value.trim();
 
-// ── Password toggle ──────────────────────────────────────────────
-function togglePw(id, btn) {
-  const input = document.getElementById(id);
-  const isText = input.type === 'text';
-  input.type = isText ? 'password' : 'text';
-  btn.innerHTML = isText ? eyeOpenSVG() : eyeClosedSVG();
-}
+        if (name.length < 3) {
+          showError('signupName', 'Full name must be at least 3 characters');
+          isValid = false;
+        } else if (!/^[A-Za-z\s]+$/.test(name)) {
+          showError('signupName', 'Name can only contain alphabets and spaces');
+          isValid = false;
+        }
 
-function eyeOpenSVG() {
-  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-    <circle cx="12" cy="12" r="3"/>
-  </svg>`;
-}
+        if (!validateEmail(email)) {
+          showError('signupEmail', 'Please enter a valid email address');
+          isValid = false;
+        }
 
-function eyeClosedSVG() {
-  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-    <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/>
-    <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/>
-    <line x1="1" y1="1" x2="23" y2="23"/>
-  </svg>`;
-}
+        const passRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        if (!passRegex.test(password)) {
+          showError('signupPassword', 'Must be 8+ chars, 1 uppercase, 1 number, & 1 special char');
+          isValid = false;
+        }
 
-// ── Inline validators ────────────────────────────────────────────
-function validateSignupPw() {
-  const pw   = document.getElementById('signupPassword').value;
-  const hint = document.getElementById('pwHint');
-  hint.classList.toggle('hidden', !(pw.length > 0 && pw.length < 6));
-}
+        if (!/^\d{10}$/.test(mobile)) {
+          showError('signupMobile', 'Please enter a valid 10-digit mobile number');
+          isValid = false;
+        }
 
-function validateMobile() {
-  const mob  = document.getElementById('signupMobile').value;
-  const hint = document.getElementById('mobileHint');
-  hint.classList.toggle('hidden', !(mob.length > 0 && mob.length < 10));
-}
+        if (isValid) {
+          window.location.href = 'index.html';
+        }
+      });
+    }
 
-// ── Error helpers ────────────────────────────────────────────────
-function showError(elId, msg) {
-  const el = document.getElementById(elId);
-  if (!el) return;
-  el.textContent = msg;
-  el.classList.remove('hidden');
-  setTimeout(() => hideError(elId), 3500);
-}
+    if (loginForm) {
+      loginForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        let isValid = true;
 
-function hideError(elId) {
-  const el = document.getElementById(elId);
-  if (el) el.classList.add('hidden');
-}
+        ['loginEmail', 'loginPassword'].forEach(clearError);
 
-function markInvalid(id) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.classList.add('error');
-  el.addEventListener('input', () => el.classList.remove('error'), { once: true });
-}
+        const email = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value;
 
-// ── Login ────────────────────────────────────────────────────────
-function doLogin() {
-  const email = document.getElementById('loginEmail').value.trim();
-  const pw    = document.getElementById('loginPassword').value;
+        if (!validateEmail(email)) {
+          showError('loginEmail', 'Please enter a valid email address');
+          isValid = false;
+        }
 
-  if (!email) { markInvalid('loginEmail'); showError('loginError', 'Please enter your email.'); return; }
-  if (!pw)    { markInvalid('loginPassword'); showError('loginError', 'Please enter your password.'); return; }
+        if (password.length === 0) {
+          showError('loginPassword', 'Please enter your password');
+          isValid = false;
+        }
 
-  const user = getUsers().find(u => u.email === email && u.password === pw);
-  if (!user) {
-    markInvalid('loginEmail');
-    markInvalid('loginPassword');
-    showError('loginError', 'Invalid email or password.');
-    return;
-  }
-
-  setSession(user);
-  window.location.href = 'pages/dashboard.html';
-}
-
-// ── Signup ───────────────────────────────────────────────────────
-function doSignup() {
-  const name   = document.getElementById('signupName').value.trim();
-  const email  = document.getElementById('signupEmail').value.trim();
-  const pw     = document.getElementById('signupPassword').value;
-  const mobile = document.getElementById('signupMobile').value.trim();
-
-  if (!name)   { markInvalid('signupName');     showError('signupError', 'Please enter your full name.'); return; }
-  if (!email)  { markInvalid('signupEmail');    showError('signupError', 'Please enter your email.'); return; }
-  if (!pw)     { markInvalid('signupPassword'); showError('signupError', 'Please enter a password.'); return; }
-  if (pw.length < 6) { markInvalid('signupPassword'); showError('signupError', 'Password must be at least 6 characters.'); return; }
-  if (!/^\d{10}$/.test(mobile)) { markInvalid('signupMobile'); showError('signupError', 'Enter a valid 10-digit mobile number.'); return; }
-
-  const users = getUsers();
-  if (users.find(u => u.email === email)) {
-    markInvalid('signupEmail');
-    showError('signupError', 'This email is already registered.');
-    return;
-  }
-
-  users.push({ name, email, password: pw, mobile });
-  saveUsers(users);
-  setSession({ name, email, mobile });
-  window.location.href = 'pages/dashboard.html';
-}
-
-// ── Auto-redirect if already logged in ──────────────────────────
-(function init() {
-  if (getSession()) {
-    window.location.href = 'pages/dashboard.html';
-  }
-})();
+        if (isValid) {
+          window.location.href = 'index.html';
+        }
+      });
+    }
+});
