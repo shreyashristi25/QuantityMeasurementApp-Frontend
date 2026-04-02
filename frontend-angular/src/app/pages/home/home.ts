@@ -1,6 +1,10 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { AuthService } from '../../services/auth.service';
+import { HistoryService } from '../../services/history.service';
+import { Subject, Subscription } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 
 interface UnitMap {
   [key: string]: string[];
@@ -12,13 +16,49 @@ interface UnitMap {
   templateUrl: './home.html',
   styleUrl: './home.css'
 })
-export class HomeComponent {
+export class HomeComponent implements OnInit, OnDestroy {
+  showLogoutDialog = false;
   types = [
     { id: 'length', label: 'Length', icon: '📏', hoverEmoji: '⚖️' },
     { id: 'weight', label: 'Weight', icon: '⚖️', hoverEmoji: '🏋️' },
     { id: 'temperature', label: 'Temperature', icon: '🌡️', hoverEmoji: '🔥' },
     { id: 'volume', label: 'Volume', icon: '🧪', hoverEmoji: '🫧' }
   ];
+
+  private logSubject = new Subject<void>();
+  private logSub?: Subscription;
+
+  constructor(
+    public authService: AuthService,
+    private historyService: HistoryService
+  ) {}
+
+  ngOnInit(): void {
+    this.logSub = this.logSubject.pipe(
+      debounceTime(1000)
+    ).subscribe(() => this.pushLogToBackend());
+  }
+
+  ngOnDestroy(): void {
+    this.logSub?.unsubscribe();
+  }
+
+  logout(): void {
+    this.showLogoutDialog = true;
+  }
+
+  showLogoutConfirm(): void {
+    this.showLogoutDialog = true;
+  }
+
+  confirmLogout(): void {
+    this.authService.logout();
+    this.showLogoutDialog = false;
+  }
+
+  cancelLogout(): void {
+    this.showLogoutDialog = false;
+  }
 
   actions = ['Comparison', 'Conversion', 'Arithmetic'];
 
@@ -80,6 +120,34 @@ export class HomeComponent {
     } else if (this.selectedAction === 'Arithmetic') {
       this.calculateArithmetic();
     }
+    
+    // Trigger debounced logging only if logged in
+    if (this.authService.isLoggedIn()) {
+      this.logSubject.next();
+    }
+  }
+
+  private pushLogToBackend(): void {
+    let payload: any = { operation: this.selectedAction.toUpperCase() };
+
+    if (this.selectedAction === 'Conversion') {
+      payload.operand1 = `${this.fromValue} ${this.fromUnit}`;
+      payload.result = `${this.toValue} ${this.toUnit}`;
+    } else if (this.selectedAction === 'Comparison') {
+      payload.operand1 = `${this.fromValue} ${this.fromUnit}`;
+      payload.operand2 = `${this.toCompareValue} ${this.toUnit}`;
+      payload.result = `${this.comparisonSymbol} (${this.comparisonText})`;
+    } else if (this.selectedAction === 'Arithmetic') {
+      let opSign = this.arithmeticOp === 'add' ? '+' : this.arithmeticOp === 'subtract' ? '-' : this.arithmeticOp === 'multiply' ? '×' : '÷';
+      payload.operation = this.arithmeticOp.toUpperCase();
+      payload.operand1 = `${this.arithmeticVal1} ${this.arithmeticUnit}`;
+      payload.operand2 = `${this.arithmeticVal2} ${this.arithmeticUnit}`;
+      payload.result = `${this.arithmeticResult} ${this.arithmeticUnit}`;
+    }
+
+    this.historyService.logOperation(payload).subscribe({
+      error: (e) => console.error('Failed to log operation', e)
+    });
   }
 
   // --- Conversion ---

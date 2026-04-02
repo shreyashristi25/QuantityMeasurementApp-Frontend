@@ -1,11 +1,4 @@
 <div class="auth-shell">
-  <header class="auth-header">
-    <a routerLink="/" class="back-link">
-      <span class="brand-emoji">⚖️</span>
-      <span class="brand-name">QUANITY MEASUREMENT APP</span>
-    </a>
-  </header>
-
   <section class="auth-card">
     <div class="left-pane">
       <div class="illustration-wrap">
@@ -53,6 +46,9 @@
         <button class="submit-btn" type="submit" [disabled]="isLoading">
           {{ isLoading ? 'Logging in…' : 'Login' }}
         </button>
+        <button class="google-btn" type="button" (click)="googleLogin()">
+          <span class="google-icon">G</span> Continue with Google
+        </button>
         <p class="switch-link">Don't have an account? <a (click)="showTab('signup')">Signup</a></p>
       </form>
       } @else {
@@ -95,6 +91,9 @@
 
         <button class="submit-btn" type="submit" [disabled]="isLoading">
           {{ isLoading ? 'Registering…' : 'Signup' }}
+        </button>
+        <button class="google-btn" type="button" (click)="googleSignup()">
+          <span class="google-icon">G</span> Continue with Google
         </button>
         <p class="switch-link">Already registered? <a (click)="showTab('login')">Login</a></p>
       </form>

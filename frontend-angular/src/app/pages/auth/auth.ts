@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { HttpErrorResponse } from '@angular/common/http';
 
@@ -38,7 +38,7 @@ function validateMobile(v: string): string {
 
 @Component({
   selector: 'app-auth',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule],
   templateUrl: './auth.html',
   styleUrl: './auth.css'
 })
@@ -82,6 +82,13 @@ export class AuthComponent implements OnInit {
     this.route.queryParams.subscribe(params => {
       this.activeTab = params['tab'] === 'signup' ? 'signup' : 'login';
     });
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    if (token) {
+      this.authService.handleGoogleCallback(token);
+      this.router.navigate(['/']);
+    }
   }
 
   showTab(tab: 'login' | 'signup'): void {
@@ -91,6 +98,14 @@ export class AuthComponent implements OnInit {
 
   togglePassword(input: HTMLInputElement): void {
     input.type = input.type === 'password' ? 'text' : 'password';
+  }
+
+  googleLogin(): void {
+    this.authService.googleLogin();
+  }
+
+  googleSignup(): void {
+    this.authService.googleLogin();
   }
 
   // ── LOGIN ──────────────────────────────────────────────────────────────────
@@ -136,12 +151,13 @@ export class AuthComponent implements OnInit {
       .subscribe({
         next: () => {
           this.isLoading = false;
-          this.showPopup('Successfully registered! Please login.');
+          this.showPopup('user registered successfully');
         },
-        error: (err: HttpErrorResponse) => {
+        error: (err: HttpErrorResponse | any) => {
           this.isLoading = false;
-          if (err.status === 400 && err.error) {
-            // Map field-level backend validation errors
+          if (err.name === 'TimeoutError' || (err.status === 0 && !err.ok)) {
+            this.signupServerError = 'Registration request timed out. Please try again.';
+          } else if (err.status === 400 && err.error) {
             const e = err.error;
             if (e.name) this.signupNameError = e.name;
             if (e.email) this.signupEmailError = e.email;
@@ -156,6 +172,7 @@ export class AuthComponent implements OnInit {
   }
 
   showPopup(message: string): void {
+    this.isLoading = false;
     this.popupText = message;
     this.popupVisible = true;
     this.emojiPieces = this.createEmojiBurst();
@@ -164,8 +181,11 @@ export class AuthComponent implements OnInit {
   closePopup(): void {
     this.popupVisible = false;
     this.emojiPieces = [];
-    if (this.popupText.includes('registered')) {
+    if (this.popupText.includes('register')) {
       this.showTab('login');
+      this.router.navigate(['/auth'], { queryParams: { tab: 'login' } });
+    } else if (this.popupText.includes('logged')) {
+      this.router.navigate(['/']);
     }
   }
 
