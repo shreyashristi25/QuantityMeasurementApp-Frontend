@@ -1,12 +1,13 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable, tap, BehaviorSubject, timeout } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly BASE = 'http://3.27.116.224:8080/auth';
+  private readonly BASE = `${environment.apiBaseUrl}/auth`;
   private readonly TOKEN_KEY = 'qma_jwt';
-  private googleAuthUrl = 'http://localhost:8080/login/oauth2/code/google';
+  private googleAuthUrl = `${environment.apiBaseUrl}/login/oauth2/code/google`;
 
   private tokenSubject = new BehaviorSubject<string | null>(this.getToken());
   token$ = this.tokenSubject.asObservable();

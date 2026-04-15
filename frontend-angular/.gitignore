@@ -66,8 +66,7 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# Environment files
-src/environments/environment*.ts
+
 
 # Temporary files
 .tmp/

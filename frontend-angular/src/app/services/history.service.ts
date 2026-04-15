@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { AuthService } from './auth.service';
+import { environment } from '../../environments/environment';
 
 export interface HistoryOperation {
   id?: number;
@@ -16,7 +17,7 @@ export interface HistoryOperation {
 
 @Injectable({ providedIn: 'root' })
 export class HistoryService {
-  private readonly BASE = 'http://3.27.116.224:8080/api/v1/history';
+  private readonly BASE = `${environment.apiBaseUrl}/api/v1/history`;
 
   constructor(private http: HttpClient, private authService: AuthService) {}
 
