@@ -16,7 +16,7 @@ export interface HistoryOperation {
 
 @Injectable({ providedIn: 'root' })
 export class HistoryService {
-  private readonly BASE = 'http://localhost:8080/api/v1/history';
+  private readonly BASE = 'http://3.27.116.224:8080/api/v1/history';
 
   constructor(private http: HttpClient, private authService: AuthService) {}
 

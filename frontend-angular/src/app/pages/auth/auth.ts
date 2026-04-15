@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { HttpErrorResponse } from '@angular/common/http';
+import { finalize } from 'rxjs';
 
 // ── Validation helpers (same rules as backend) ──────────────────────────────
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -80,15 +81,17 @@ export class AuthComponent implements OnInit {
 
   ngOnInit(): void {
     this.route.queryParams.subscribe(params => {
+      // Handle OAuth callback token
+      const token = params['token'];
+      if (token) {
+        this.authService.handleGoogleCallback(token);
+        this.router.navigate(['/'], { replaceUrl: true });
+        return;
+      }
+
+      // Handle tab switching
       this.activeTab = params['tab'] === 'signup' ? 'signup' : 'login';
     });
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    if (token) {
-      this.authService.handleGoogleCallback(token);
-      this.router.navigate(['/']);
-    }
   }
 
   showTab(tab: 'login' | 'signup'): void {
@@ -117,17 +120,17 @@ export class AuthComponent implements OnInit {
     if (this.loginEmailError || this.loginPasswordError) return;
 
     this.isLoading = true;
-    this.authService.login(this.loginEmail, this.loginPassword).subscribe({
-      next: () => {
-        this.isLoading = false;
-        this.router.navigate(['/']);
-      },
-      error: (err: HttpErrorResponse) => {
-        this.isLoading = false;
-        this.loginServerError =
-          err.error?.message || 'Login failed. Please try again.';
-      }
-    });
+    this.authService.login(this.loginEmail, this.loginPassword)
+      .pipe(finalize(() => this.isLoading = false))
+      .subscribe({
+        next: () => {
+          this.router.navigate(['/']);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.loginServerError =
+            err.error?.message || 'Login failed. Please try again.';
+        }
+      });
   }
 
   // ── SIGNUP ─────────────────────────────────────────────────────────────────
@@ -148,13 +151,12 @@ export class AuthComponent implements OnInit {
     this.isLoading = true;
     this.authService
       .register(this.signupName, this.signupEmail, this.signupPassword, this.signupMobile)
+      .pipe(finalize(() => this.isLoading = false))
       .subscribe({
         next: () => {
-          this.isLoading = false;
           this.showPopup('user registered successfully');
         },
         error: (err: HttpErrorResponse | any) => {
-          this.isLoading = false;
           if (err.name === 'TimeoutError' || (err.status === 0 && !err.ok)) {
             this.signupServerError = 'Registration request timed out. Please try again.';
           } else if (err.status === 400 && err.error) {

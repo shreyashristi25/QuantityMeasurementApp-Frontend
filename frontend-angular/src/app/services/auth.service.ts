@@ -4,9 +4,9 @@ import { Observable, tap, BehaviorSubject, timeout } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly BASE = 'http://localhost:8080/auth';
+  private readonly BASE = 'http://3.27.116.224:8080/auth';
   private readonly TOKEN_KEY = 'qma_jwt';
-  private googleAuthUrl = 'http://localhost:8080/oauth2/authorization/google';
+  private googleAuthUrl = 'http://localhost:8080/login/oauth2/code/google';
 
   private tokenSubject = new BehaviorSubject<string | null>(this.getToken());
   token$ = this.tokenSubject.asObservable();
